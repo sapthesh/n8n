@@ -1,0 +1,83 @@
+{
+  "name": "Dropbox → Google Sheets : Daily Folder‑size Audit",
+  "nodes": [
+    {
+      "parameters": { "cronExpression": "0 2 * * *" },
+      "name": "Cron",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "list",
+        "path": "/SharedFolder",
+        "returnAll": true
+      },
+      "name": "Dropbox List",
+      "type": "n8n-nodes-base.dropbox",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "return items.map(item => item.json);\n"
+      },
+      "name": "Extract Files",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "operation": "getMetadata",
+        "path": "={{$json[\"path_display\"]}}"
+      },
+      "name": "Dropbox Metadata",
+      "type": "n8n-nodes-base.dropbox",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": [
+          { "name": "date", "value": "={{$now}}" },
+          { "name": "path", "value": "={{$json[\"path_display\"]}}" },
+          { "name": "sizeKB", "value": "={{Math.round($json[\"size\"]/1024)}}" },
+          { "name": "modified", "value": "={{$json[\"client_modified\"]}}" }
+        ]
+      },
+      "name": "Prepare Row",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "spreadsheetId": "YOUR_GOOGLE_SHEET_ID",
+        "range": "Audit!A:D",
+        "valueInputOption": "USER_ENTERED",
+        "values": [
+          [
+            "={{$json[\"date\"]}}",
+            "={{$json[\"path\"]}}",
+            "={{$json[\"sizeKB\"]}}",
+            "={{$json[\"modified\"]}}"
+          ]
+        ]
+      },
+      "name": "Google Sheets Append",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 1,
+      "position": [1250, 300]
+    }
+  ],
+  "connections": {
+    "Cron": { "main": [[["Dropbox List", "main"]]] },
+    "Dropbox List": { "main": [[["Extract Files", "main"]]] },
+    "Extract Files": { "main": [[["Dropbox Metadata", "main"]]] },
+    "Dropbox Metadata": { "main": [[["Prepare Row", "main"]]] },
+    "Prepare Row": { "main": [[["Google Sheets Append", "main"]]] }
+  }
+}
