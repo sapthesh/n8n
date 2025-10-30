@@ -1,0 +1,62 @@
+{
+  "name": "Dropbox → Teams : Weekly Top‑10 Largest Files",
+  "nodes": [
+    {
+      "parameters": { "cronExpression": "0 9 * * MON" },
+      "name": "Cron",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 300][250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "list",
+        "path": "/",
+        "returnAll": true
+      },
+      "name": "Dropbox List All",
+      "type": "n8n-nodes-base.dropbox",
+      "typeVersion": 1,
+      "position": [450, 300][450, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const sorted = items.map(i=>i.json).sort((a,b)=>b.size-a.size).slice(0,10);\nreturn sorted.map(r=>({json:r}));"
+      },
+      "name": "Top 10 Files",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [650, 300][650, 300]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": [
+          {
+            "name": "table",
+            "value": "={{\n`| Size (MB) | Path |\n|---|---|\n${$items.map(item=>`| ${(item.json.size/1024/1024).toFixed(2)} | ${item.json.path_display} |`).join('\\n')}`}}"
+          }
+        ]
+      },
+      "name": "Markdown Table",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [850, 300][850, 300]
+    },
+    {
+      "parameters": {
+        "channel": "YOUR_TEAMS_CHANNEL_ID",
+        "text": "📊 *Weekly Top‑10 Largest Files* (as of {{ $now }})\\n{{ $json.table }}"
+      },
+      "name": "Post to Teams",
+      "type": "n8n-nodes-base.microsoftTeams",
+      "typeVersion": 1,
+      "position": [1050, 300][1050, 300]
+    }
+  ],
+  "connections": {
+    "Cron": { "main": [["Dropbox List All", "main"]] },
+    "Dropbox List All": { "main": [["Top 10 Files", "main"]] },
+    "Top 10 Files": { "main": [["Markdown Table", "main"]] },
+    "Markdown Table": { "main": [["Post to Teams", "main"]] }
+  }
+}
