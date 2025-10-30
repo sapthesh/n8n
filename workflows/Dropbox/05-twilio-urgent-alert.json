@@ -1,0 +1,71 @@
+{
+  "name": "Dropbox → Twilio SMS : Urgent Document Alert",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "onFileCreated",
+        "path": "/urgent"
+      },
+      "name": "Dropbox Trigger",
+      "type": "n8n-nodes-base.dropboxTrigger",
+      "typeVersion": 1,
+      "position": [250, 200][250, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "key": "size",
+              "operation": "greaterThan",
+              "value": 5242880
+            }
+          ]
+        }
+      },
+      "name": "Size > 5 MB",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [450, 200][450, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://api-ssl.bitly.com/v4/shorten",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {
+          "bodyContentType": "json",
+          "bodyParametersJson": "={\"long_url\":\"https://www.dropbox.com/home/urgent/{{ $json.name }}\"}"
+        },
+        "authentication": "headerAuth",
+        "headerAuth": {
+          "name": "Authorization",
+          "value": "Bearer YOUR_BITLY_TOKEN"
+        }
+      },
+      "name": "Create Short Link",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [650, 150][650, 150]
+    },
+    {
+      "parameters": {
+        "from": "+15550001111",
+        "to": [
+          "+15551112222",
+          "+15553334444"
+        ],
+        "body": "⚠️ Large file uploaded: {{ $json.name }} ({{ Math.round($json.size/1024/1024) }} MB). Link: {{ $json.link }}"
+      },
+      "name": "Send SMS",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [850, 150][850, 150]
+    }
+  ],
+  "connections": {
+    "Dropbox Trigger": { "main": [["Size > 5 MB", "main"]] },
+    "Size > 5 MB": { "main": [["Create Short Link", "main"]], "else": [] },
+    "Create Short Link": { "main": [["Send SMS", "main"]] }
+  }
+}
