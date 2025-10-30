@@ -1,0 +1,49 @@
+{
+  "name": "Dropbox → Telegram : Random Meme Generator",
+  "nodes": [
+    {
+      "parameters": { "cronExpression": "0 */6 * * *" },
+      "name": "Cron",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 300][250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "list",
+        "path": "/memes",
+        "returnAll": true
+      },
+      "name": "List Memes",
+      "type": "n8n-nodes-base.dropbox",
+      "typeVersion": 1,
+      "position": [450, 300][450, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const idx = Math.floor(Math.random()*$items.length);\nreturn [{ json: $items[idx].json, binary: $items[idx].binary }];"
+      },
+      "name": "Pick Random",
+      "type": "n8n-nodes-base.functionItem",
+      "typeVersion": 1,
+      "position": [650, 300][650, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "caption": "🤖 Random meme of the hour!",
+        "fileBinaryPropertyName": "binary",
+        "fileName": "={{$json.name}}"
+      },
+      "name": "Send to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [850, 300][850, 300]
+    }
+  ],
+  "connections": {
+    "Cron": { "main": [["List Memes", "main"]] },
+    "List Memes": { "main": [["Pick Random", "main"]] },
+    "Pick Random": { "main": [["Send to Telegram", "main"]] }
+  }
+}
