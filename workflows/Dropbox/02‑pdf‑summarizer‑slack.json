@@ -1,0 +1,93 @@
+{
+  "name": "Dropbox → Slack : New PDF Auto‑Summarizer",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "onFileCreated",
+        "path": "/incoming-pdfs"
+      },
+      "name": "Dropbox Trigger",
+      "type": "n8n-nodes-base.dropboxTrigger",
+      "typeVersion": 1,
+      "position": [250, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value": "application/pdf",
+              "operation": "contains",
+              "key": "mime_type"
+            }
+          ]
+        }
+      },
+      "name": "PDF Filter",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [450, 200]
+    },
+    {
+      "parameters": {
+        "functionCode": "const buf = Buffer.from(item.binary.data.data, 'base64');\nitem.json.base64 = buf.toString('base64');\nreturn item;"
+      },
+      "name": "Convert to Base64",
+      "type": "n8n-nodes-base.functionItem",
+      "typeVersion": 1,
+      "position": [650, 150]
+    },
+    {
+      "parameters": {
+        "url": "https://api.openai.com/v1/chat/completions",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {
+          "bodyContentType": "json",
+          "bodyParametersJson": "={\"model\":\"gpt-4o-mini\",\"messages\":[{\"role\":\"system\",\"content\":\"Summarize the attached PDF (base64) in 3‑5 sentences.\"},{\"role\":\"user\",\"content\":\"{{ $json.base64 }}\"}]}"
+        },
+        "authentication": "headerAuth",
+        "headerAuth": {
+          "name": "Authorization",
+          "value": "Bearer YOUR_OPENAI_API_KEY"
+        }
+      },
+      "name": "Summarizer API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [850, 150]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": [
+          { "name": "text", "value": "={{$json.choices[0].message.content}}" },
+          { "name": "link", "value": "={{'https://www.dropbox.com/home/incoming-pdfs'}}" }
+        ]
+      },
+      "name": "Prepare Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [1050, 150]
+    },
+    {
+      "parameters": {
+        "channel": "YOUR_SLACK_CHANNEL",
+        "text": "🗂 *New PDF uploaded!*\\n*Summary:* {{ $json.text }}\\n*Link:* {{ $json.link }}"
+      },
+      "name": "Post to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [1250, 150]
+    }
+  ],
+  "connections": {
+    "Dropbox Trigger": { "main": [[["PDF Filter", "main"]]] },
+    "PDF Filter": {
+      "main": [[["Convert to Base64", "main"]]],
+      "else": []
+    },
+    "Convert to Base64": { "main": [[["Summarizer API", "main"]]] },
+    "Summarizer API": { "main": [[["Prepare Message", "main"]]] },
+    "Prepare Message": { "main": [[["Post to Slack", "main"]]] }
+  }
+}
