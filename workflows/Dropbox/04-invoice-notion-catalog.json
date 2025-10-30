@@ -1,0 +1,83 @@
+{
+  "name": "Dropbox → Notion : Invoice Auto‑Catalog",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "onFileCreated",
+        "path": "/invoices"
+      },
+      "name": "Dropbox Trigger",
+      "type": "n8n-nodes-base.dropboxTrigger",
+      "typeVersion": 1,
+      "position": [250, 200][250, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "key": "mime_type",
+              "operation": "contains",
+              "value": "application/pdf"
+            }
+          ]
+        }
+      },
+      "name": "PDF Only",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [450, 200][450, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://vision.googleapis.com/v1/images:annotate",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {
+          "bodyContentType": "json",
+          "bodyParametersJson": "={\"requests\":[{\"image\":{\"content\":\"{{ $binary.data.base64 }}\"},\"features\":[{\"type\":\"DOCUMENT_TEXT_DETECTION\"}]}]}"
+        },
+        "authentication": "headerAuth",
+        "headerAuth": {
+          "name": "Authorization",
+          "value": "Bearer YOUR_GOOGLE_CLOUD_OAUTH_TOKEN"
+        }
+      },
+      "name": "Google OCR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [650, 150][650, 150]
+    },
+    {
+      "parameters": {
+        "functionCode": "const raw = $json.responses[0].fullTextAnnotation.text;\nconst amountMatch = raw.match(/Total\\s*[:]?\\s*\\$?([0-9,.]+)/i);\nconst dateMatch = raw.match(/Date\\s*[:]?\\s*([0-9]{2}\\/[0-9]{2}\\/[0-9]{4})/i);\nreturn [{ json: { amount: amountMatch ? amountMatch[1] : null, date: dateMatch ? dateMatch[1] : null, rawText: raw } }];"
+      },
+      "name": "Parse OCR",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 150][850, 150]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "databaseId": "YOUR_NOTION_DATABASE_ID",
+        "properties": {
+          "Name": { "title": [{ "text": { "content": "={{$json.rawText.substring(0,30)}}..." }] },
+          "Amount": { "number": "={{$json.amount ? parseFloat($json.amount.replace(/,/g,'')) : null}}" },
+          "Date": { "date": { "start": "={{ $json.date ? $json.date.split('/').reverse().join('-') : null }}" },
+          "Source": { "url": "={{ $json.fileLink }}" }
+        }
+      },
+      "name": "Create Notion Page",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 1,
+      "position": [1050, 150][1050, 150]
+    }
+  ],
+  "connections": {
+    "Dropbox Trigger": { "main": [["PDF Only", "main"]] },
+    "PDF Only": { "main": [["Google OCR", "main"]], "else": [] },
+    "Google OCR": { "main": [["Parse OCR", "main"]] },
+    "Parse OCR": { "main": [["Create Notion Page", "main"]] }
+  }
+}
