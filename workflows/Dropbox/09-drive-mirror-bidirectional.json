@@ -1,0 +1,87 @@
+{
+  "name": "Dropbox ↔ Google Drive : Bi‑directional Mirror (Delta)",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "onFileCreated",
+        "path": "/mirror"
+      },
+      "name": "Dropbox Trigger",
+      "type": "n8n-nodes-base.dropboxTrigger",
+      "typeVersion": 1,
+      "position": [250, 200][250, 200]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "folderId": "YOUR_GOOGLE_DRIVE_FOLDER_ID",
+        "query": "name = \"{{ $json.name }}\""
+      },
+      "name": "Drive Search",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [450, 200][450, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "key": "exists",
+              "operation": "equals",
+              "value": true
+            }
+          ]
+        }
+      },
+      "name": "Exists on Drive?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 200][650, 200]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "fileId": "={{$json[0].id}}",
+        "binaryPropertyName": "binary"
+      },
+      "name": "Update Drive File",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [850, 100][850, 100]
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "parentFolderId": "YOUR_GOOGLE_DRIVE_FOLDER_ID",
+        "binaryPropertyName": "binary"
+      },
+      "name": "Upload New File",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [850, 300][850, 300]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": [
+          { "name": "dropboxPath", "value": "={{$json.path_display}}" },
+          { "name": "driveFileId", "value": "={{ $item(0).json.id || $json.id }}" }
+        ]
+      },
+      "name": "Store Mapping (JSON DB)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [1050, 200][1050, 200]
+    }
+  ],
+  "connections": {
+    "Dropbox Trigger": { "main": [["Drive Search", "main"]] },
+    "Drive Search": { "main": [["Exists on Drive?", "main"]] },
+    "Exists on Drive?": {
+      "main": [["Update Drive File", "main"]],
+      "else": [["Upload New File", "main"]]
+    },
+    "Update Drive File": { "main": [["Store Mapping (JSON DB)", "main"]] },
+    "Upload New File": { "main": [["Store Mapping (JSON DB)", "main"]] }
+  }
+}
