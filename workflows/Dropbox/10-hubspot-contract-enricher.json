@@ -1,0 +1,77 @@
+{
+  "name": "Dropbox → HubSpot : New Contract Auto‑Enricher",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "onFileCreated",
+        "path": "/contracts"
+      },
+      "name": "Dropbox Trigger",
+      "type": "n8n-nodes-base.dropboxTrigger",
+      "typeVersion": 1,
+      "position": [250, 200][250, 200]
+    },
+    {
+      "parameters": {
+        "functionCode": "const buf = Buffer.from(item.binary.data.data, 'base64');\nitem.json.base64 = buf.toString('base64');\nreturn item;"
+      },
+      "name": "Base64 PDF",
+      "type": "n8n-nodes-base.functionItem",
+      "typeVersion": 1,
+      "position": [450, 150][450, 150]
+    },
+    {
+      "parameters": {
+        "url": "https://api.openai.com/v1/chat/completions",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {
+          "bodyContentType": "json",
+          "bodyParametersJson": "={\"model\":\"gpt-4o-mini\",\"messages\":[{\"role\":\"system\",\"content\":\"Extract the contract number (format: CN-####) from the following PDF (base64). Return only the number or null.\"},{\"role\":\"user\",\"content\":\"{{ $json.base64 }}\"}]}"
+        },
+        "authentication": "headerAuth",
+        "headerAuth": {
+          "name": "Authorization",
+          "value": "Bearer YOUR_OPENAI_KEY"
+        }
+      },
+      "name": "Extract Contract #",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [650, 150][650, 150]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "object": "contact",
+        "searchTerm": "={{ $json.choices[0].message.content }}",
+        "properties": ["email"]
+      },
+      "name": "HubSpot Find Contact",
+      "type": "n8n-nodes-base.hubSpot",
+      "typeVersion": 1,
+      "position": [850, 150][850, 150]
+    },
+    {
+      "parameters": {
+        "operation": "add",
+        "object": "deal",
+        "properties": [
+          { "name": "dealname", "value": "Contract {{ $json.choices[0].message.content }}" },
+          { "name": "associatedcontactids", "value": "={{ $json.results[0].id }}" },
+          { "name": "closedate", "value": "{{ Math.floor(Date.now()/1000) + 30*86400 }}" }
+        ]
+      },
+      "name": "Create Deal",
+      "type": "n8n-nodes-base.hubSpot",
+      "typeVersion": 1,
+      "position": [1050, 150][1050, 150]
+    }
+  ],
+  "connections": {
+    "Dropbox Trigger": { "main": [["Base64 PDF", "main"]] },
+    "Base64 PDF": { "main": [["Extract Contract #", "main"]] },
+    "Extract Contract #": { "main": [["HubSpot Find Contact", "main"]] },
+    "HubSpot Find Contact": { "main": [["Create Deal", "main"]] }
+  }
+}
