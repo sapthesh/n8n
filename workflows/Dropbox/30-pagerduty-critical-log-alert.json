@@ -1,0 +1,65 @@
+{
+  "name": "Dropbox → PagerDuty : Critical Log Alert",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "onFileCreated",
+        "path": "/critical-logs"
+      },
+      "name": "Dropbox Trigger",
+      "type": "n8n-nodes-base.dropboxTrigger",
+      "typeVersion": 1,
+      "position": [250, 200][250, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "key": "size",
+              "operation": "greaterThan",
+              "value": 1048576
+            }
+          ]
+        }
+      },
+      "name": "Size > 1 MB",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [450, 200][450, 200]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": [
+          { "name": "title", "value": "Critical log uploaded – {{ $json.name }}" },
+          { "name": "severity", "value": "critical" },
+          { "name": "source", "value": "Dropbox /critical-logs" },
+          { "name": "link", "value": "https://www.dropbox.com/home/critical-logs/{{ $json.name }}" },
+          { "name": "body", "value": "A log file larger than 1 MB was uploaded. Size: {{ Math.round($json.size/1024/1024) }} MB." }
+        ]
+      },
+      "name": "Prepare Incident",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [650, 200][650, 200]
+    },
+    {
+      "parameters": {
+        "operation": "createIncident",
+        "serviceId": "YOUR_PAGERDUTY_SERVICE_ID",
+        "title": "={{$json.title}}",
+        "severity": "{{$json.severity}}",
+        "details": "={{ $json.body }}\\nLink: {{ $json.link }}",
+        "urgency": "high"
+      },
+      "name": "PagerDuty Incident",
+      "type": "n8n-nodes-base.pagerDuty",
+      "typeVersion": 1,
+      "position": [850, 200][850, 200]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "toEmail": "ops-team@example.com",
+        "subject": "PagerDuty incident created for critical log",
+        "text": "Incident
