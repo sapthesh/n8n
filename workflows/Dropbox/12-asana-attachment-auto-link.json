@@ -1,0 +1,61 @@
+{
+  "name": "Dropbox → Asana : Task Attachment Auto‑Link",
+  "nodes": [
+    {
+      "parameters": {
+        "cronExpression": "*/30 * * * *"
+      },
+      "name": "Cron",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 300][250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "list",
+        "path": "/asana-attachments",
+        "returnAll": true
+      },
+      "name": "Dropbox List",
+      "type": "n8n-nodes-base.dropbox",
+      "typeVersion": 1,
+      "position": [450, 300][450, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const match = $json.name.match(/TASKID-(\\d+)_/); if (!match) return [];\nreturn [{ json: { taskId: match[1] }, binary: item.binary }];"
+      },
+      "name": "Parse Task ID",
+      "type": "n8n-nodes-base.functionItem",
+      "typeVersion": 1,
+      "position": [650, 300][650, 300]
+    },
+    {
+      "parameters": {
+        "operation": "addAttachment",
+        "taskId": "={{$json.taskId}}",
+        "binaryPropertyName": "binary"
+      },
+      "name": "Asana Add Attachment",
+      "type": "n8n-nodes-base.asana",
+      "typeVersion": 1,
+      "position": [850, 300][850, 300]
+    },
+    {
+      "parameters": {
+        "operation": "move",
+        "path": "/processed/{{ $json.name }}"
+      },
+      "name": "Move Processed",
+      "type": "n8n-nodes-base.dropbox",
+      "typeVersion": 1,
+      "position": [1050, 300][1050, 300]
+    }
+  ],
+  "connections": {
+    "Cron": { "main": [["Dropbox List", "main"]] },
+    "Dropbox List": { "main": [["Parse Task ID", "main"]] },
+    "Parse Task ID": { "main": [["Asana Add Attachment", "main"]] },
+    "Asana Add Attachment": { "main": [["Move Processed", "main"]] }
+  }
+}
