@@ -1,0 +1,39 @@
+{
+  "name": "Dropbox → Zendesk : Ticket Attachment Auto‑Add",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "onFileCreated",
+        "path": "/zendesk-uploads"
+      },
+      "name": "Dropbox Trigger",
+      "type": "n8n-nodes-base.dropboxTrigger",
+      "typeVersion": 1,
+      "position": [250, 200][250, 200]
+    },
+    {
+      "parameters": {
+        "functionCode": "const match = $json.name.match(/ticket-(\\d+)_/); if (!match) return [];\nreturn [{ json: { ticketId: match[1] }, binary: item.binary }];"
+      },
+      "name": "Extract Ticket ID",
+      "type": "n8n-nodes-base.functionItem",
+      "typeVersion": 1,
+      "position": [450, 200][450, 200]
+    },
+    {
+      "parameters": {
+        "operation": "addAttachment",
+        "ticketId": "={{$json.ticketId}}",
+        "binaryPropertyName": "binary"
+      },
+      "name": "Zendesk Add Attachment",
+      "type": "n8n-nodes-base.zendesk",
+      "typeVersion": 1,
+      "position": [650, 200][650, 200]
+    }
+  ],
+  "connections": {
+    "Dropbox Trigger": { "main": [["Extract Ticket ID", "main"]] },
+    "Extract Ticket ID": { "main": [["Zendesk Add Attachment", "main"]] }
+  }
+}
