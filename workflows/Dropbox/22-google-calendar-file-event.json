@@ -1,0 +1,51 @@
+{
+  "name": "Dropbox → Google Calendar : File‑Based Event Scheduler",
+  "nodes": [
+    {
+      "parameters": { "cronExpression": "0 7 * * *" },
+      "name": "Cron",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 300][250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "list",
+        "path": "/events",
+        "returnAll": true
+      },
+      "name": "List Event Files",
+      "type": "n8n-nodes-base.dropbox",
+      "typeVersion": 1,
+      "position": [450, 300][450, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const match = $json.name.match(/(\\d{8})_(\\d{4})_(.+)\\.txt/);\nif (!match) return [];\nconst dateStr = match[1];\nconst timeStr = match[2];\nconst title = match[3];\nconst start = `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}T${timeStr.slice(0,2)}:${timeStr.slice(2,4)}:00`;\nreturn [{ json: { title, start, description: $json.path_display, fileLink: 'https://www.dropbox.com/home/events/' + $json.name } }];"
+      },
+      "name": "Parse Event Details",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [650, 300][650, 300]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "calendarId": "primary",
+        "summary": "={{ $json.title }}",
+        "description": "File: {{ $json.fileLink }}",
+        "start": "={{ $json.start }}",
+        "end": "={{ $json.start.replace('T', 'T') + ':00' }}"
+      },
+      "name": "Create Calendar Event",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [850, 300][850, 300]
+    }
+  ],
+  "connections": {
+    "Cron": { "main": [["List Event Files", "main"]] },
+    "List Event Files": { "main": [["Parse Event Details", "main"]] },
+    "Parse Event Details": { "main": [["Create Calendar Event", "main"]] }
+  }
+}
