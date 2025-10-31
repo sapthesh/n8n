@@ -145,9 +145,7 @@ We welcome contributions that broaden the niche use‑cases, add more robust err
 
 ## 📞 Support / Questions  
 
-* **Discord** – n8n community server (`#automation-help`).  
 * **GitHub Issues** – Open a new issue for bugs or feature requests.  
-* **Email** – `automation‑help@example.com` (replace with your own support address).  
 
 ---  
 
