@@ -1,0 +1,58 @@
+{
+  "name": "Dropbox → Airtable : Social Media Calendar Auto‑Populate",
+  "nodes": [
+    {
+      "parameters": {
+        "cronExpression": "0 7 * * *"
+      },
+      "name": "Cron",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 300][250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "list",
+        "path": "/social-calendar",
+        "returnAll": true
+      },
+      "name": "List Files",
+      "type": "n8n-nodes-base.dropbox",
+      "typeVersion": 1,
+      "position": [450, 300][450, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const match = $json.name.match(/(\\d{4}-\\d{2}-\\d{2})_(Instagram|Twitter|LinkedIn)_(.+)\\.(png|jpg|mp4)/i);\nif (!match) return [];\nreturn [{ json: { date: match[1], platform: match[2].toLowerCase(), title: match[3], file: $json.name, link: 'https://www.dropbox.com/home/social-calendar/' + $json.name } }];"
+      },
+      "name": "Parse Metadata",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [650, 300][650, 300]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "baseId": "YOUR_AIRTABLE_BASE_ID",
+        "tableId": "tblPosts",
+        "upsertKey": "DropboxLink",
+        "fields": [
+          { "fieldName": "Date", "value": "={{ $json.date }}" },
+          { "fieldName": "Platform", "value": "={{ $json.platform }}" },
+          { "fieldName": "Title", "value": "={{ $json.title }}" },
+          { "fieldName": "Attachment", "value": "={{ $json.link }}" },
+          { "fieldName": "DropboxLink", "value": "={{ $json.link }}" }
+        ]
+      },
+      "name": "Airtable Upsert",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 1,
+      "position": [850, 300][850, 300]
+    }
+  ],
+  "connections": {
+    "Cron": { "main": [["List Files", "main"]] },
+    "List Files": { "main": [["Parse Metadata", "main"]] },
+    "Parse Metadata": { "main": [["Airtable Upsert", "main"]] }
+  }
+}
