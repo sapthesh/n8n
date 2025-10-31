@@ -1,0 +1,52 @@
+{
+  "name": "Dropbox → ClickUp : Design Review Queue",
+  "nodes": [
+    {
+      "parameters": {
+        "cronExpression": "0 * * * *"
+      },
+      "name": "Cron",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 300][250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "list",
+        "path": "/design-reviews",
+        "returnAll": true
+      },
+      "name": "Dropbox List",
+      "type": "n8n-nodes-base.dropbox",
+      "typeVersion": 1,
+      "position": [450, 300][450, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const ext = $json.name.split('.').pop().toLowerCase(); if (!['sketch','fig','png','jpg'].includes(ext)) return [];\nreturn [{ json: { fileName: $json.name, url: 'https://www.dropbox.com/home/design-reviews/' + $json.name } }];"
+      },
+      "name": "Filter Design Files",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [650, 300][650, 300]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "listId": "YOUR_CLICKUP_LIST_ID",
+        "name": "Design Review – {{ $json.fileName }}",
+        "description": "File: {{ $json.url }}",
+        "status": "to do"
+      },
+      "name": "Create ClickUp Task",
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [850, 300][850, 300]
+    }
+  ],
+  "connections": {
+    "Cron": { "main": [["Dropbox List", "main"]] },
+    "Dropbox List": { "main": [["Filter Design Files", "main"]] },
+    "Filter Design Files": { "main": [["Create ClickUp Task", "main"]] }
+  }
+}
