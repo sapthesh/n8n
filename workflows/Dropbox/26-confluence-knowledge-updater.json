@@ -1,0 +1,53 @@
+{
+  "name": "Dropbox → Confluence : Knowledge Base Updater",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "onFileCreated",
+        "path": "/confluence-content"
+      },
+      "name": "Dropbox Trigger",
+      "type": "n8n-nodes-base.dropboxTrigger",
+      "typeVersion": 1,
+      "position": [250, 200][250, 200]
+    },
+    {
+      "parameters": {
+        "functionCode": "if (!['.md','.html'].some(ext=>$json.name.endsWith(ext))) return [];\nreturn [{ json: { title: $json.name.replace(/\\.(md|html)$/,''), contentBase64: $binary.data.base64 } }];"
+      },
+      "name": "Prepare Content",
+      "type": "n8n-nodes-base.functionItem",
+      "typeVersion": 1,
+      "position": [450, 200][450, 200]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "spaceKey": "YOUR_SPACE",
+        "title": "={{ $json.title }}"
+      },
+      "name": "Search Page",
+      "type": "n8n-nodes-base.confluence",
+      "typeVersion": 1,
+      "position": [650, 200][650, 200]
+    },
+    {
+      "parameters": {
+        "operation": "createOrUpdate",
+        "spaceKey": "YOUR_SPACE",
+        "title": "={{ $json.title }}",
+        "body": "={{ Buffer.from($json.contentBase64, 'base64').toString('utf8') }}",
+        "type": "page"
+      },
+      "name": "Create/Update Page",
+      "type": "n8n-nodes-base.confluence",
+      "typeVersion": 1,
+      "position": [850, 200][850, 200]
+    }
+  ],
+  "connections": {
+    "Dropbox Trigger": { "main": [["Prepare Content", "main"]] },
+    "Prepare Content": { "main": [["Search Page", "main"]] },
+    "Search Page": { "main": [["Create/Update Page", "main"]] }
+  }
+}
