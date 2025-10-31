@@ -1,0 +1,39 @@
+{
+  "name": "Dropbox → Google Cloud Pub/Sub : Data‑Lake Ingest Trigger",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "onFileCreated",
+        "path": "/data-lake/raw"
+      },
+      "name": "Dropbox Trigger",
+      "type": "n8n-nodes-base.dropboxTrigger",
+      "typeVersion": 1,
+      "position": [250, 200][250, 200]
+    },
+    {
+      "parameters": {
+        "functionCode": "const buf = Buffer.from(item.binary.data.data, 'base64');\nitem.json.payload = buf.toString('base64');\nreturn item;"
+      },
+      "name": "Base64 Payload",
+      "type": "n8n-nodes-base.functionItem",
+      "typeVersion": 1,
+      "position": [450, 200][450, 200]
+    },
+    {
+      "parameters": {
+        "topicName": "raw-data-ingest",
+        "message": "={{ JSON.stringify({ file: $json.path_display, data: $json.payload }) }}",
+        "attributes": {}
+      },
+      "name": "Publish to PubSub",
+      "type": "n8n-nodes-base.googlePubSub",
+      "typeVersion": 1,
+      "position": [650, 200][650, 200]
+    }
+  ],
+  "connections": {
+    "Dropbox Trigger": { "main": [["Base64 Payload", "main"]] },
+    "Base64 Payload": { "main": [["Publish to PubSub", "main"]] }
+  }
+}
