@@ -1,0 +1,48 @@
+{
+  "name": "Dropbox → ElasticSearch : File‑Metadata Indexer",
+  "nodes": [
+    {
+      "parameters": { "cronExpression": "0 * * * *" },
+      "name": "Cron",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 300][250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "list",
+        "path": "/search-index",
+        "returnAll": true
+      },
+      "name": "List Files",
+      "type": "n8n-nodes-base.dropbox",
+      "typeVersion": 1,
+      "position": [450, 300][450, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "return $items.map(item => ({ index: { _index: 'dropbox-files', _id: item.json.path_lower } } , { path: item.json.path_display, size: item.json.size, mime: item.json.mime_type, modified: item.json.client_modified }));"
+      },
+      "name": "Prepare Bulk Payload",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [650, 300][650, 300]
+    },
+    {
+      "parameters": {
+        "operation": "bulk",
+        "index": "dropbox-files",
+        "body": "={{ $json }}"
+      },
+      "name": "ElasticSearch Bulk",
+      "type": "n8n-nodes-base.elasticSearch",
+      "typeVersion": 1,
+      "position": [850, 300][850, 300]
+    }
+  ],
+  "connections": {
+    "Cron": { "main": [["List Files", "main"]] },
+    "List Files": { "main": [["Prepare Bulk Payload", "main"]] },
+    "Prepare Bulk Payload": { "main": [["ElasticSearch Bulk", "main"]] }
+  }
+}
