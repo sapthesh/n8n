@@ -1,0 +1,51 @@
+{
+  "name": "Dropbox → Monday.com : Asset Version Tracker",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "onFileCreated",
+        "path": "/assets"
+      },
+      "name": "Dropbox Trigger",
+      "type": "n8n-nodes-base.dropboxTrigger",
+      "typeVersion": 1,
+      "position": [250, 200][250, 200]
+    },
+    {
+      "parameters": {
+        "operation": "listRevisions",
+        "path": "={{ $json.path_display }}"
+      },
+      "name": "List Revisions",
+      "type": "n8n-nodes-base.dropbox",
+      "typeVersion": 1,
+      "position": [450, 200][450, 200]
+    },
+    {
+      "parameters": {
+        "functionCode": "const latest = $json.entries[0];\nreturn [{ json: { name: $json.name, version: latest.rev, link: latest.path_display } }];"
+      },
+      "name": "Extract Latest Version",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [650, 200][650, 200]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "boardId": "YOUR_MONDAY_BOARD_ID",
+        "itemId": "={{ $json.mondayItemId || null }}",
+        "columnValues": "={\"text\":\"{{ $json.name }}\",\"numeric\":{{ $json.version }},\"link\":\"{{ $json.link }}\"}"
+      },
+      "name": "Monday Upsert",
+      "type": "n8n-nodes-base.monday",
+      "typeVersion": 1,
+      "position": [850, 200][850, 200]
+    }
+  ],
+  "connections": {
+    "Dropbox Trigger": { "main": [["List Revisions", "main"]] },
+    "List Revisions": { "main": [["Extract Latest Version", "main"]] },
+    "Extract Latest Version": { "main": [["Monday Upsert", "main"]] }
+  }
+}
