@@ -1,0 +1,50 @@
+{
+  "name": "Dropbox → Trello : Board Media Sync",
+  "nodes": [
+    {
+      "parameters": { "cronExpression": "0 */12 * * *" },
+      "name": "Cron",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 300][250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "list",
+        "path": "/trello-board",
+        "returnAll": true
+      },
+      "name": "List Files",
+      "type": "n8n-nodes-base.dropbox",
+      "typeVersion": 1,
+      "position": [450, 300][450, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const parts = $json.path_display.split('/'); // /BoardName/ListName/file.ext\nif (parts.length < 3) return [];\nconst board = parts[1];\nconst list = parts[2];\nconst name = $json.name;\nreturn [{ json: { board, list, name, link: 'https://www.dropbox.com/home/trello-board/' + $json.path_display } }];"
+      },
+      "name": "Map to Trello",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [650, 300][650, 300]
+    },
+    {
+      "parameters": {
+        "operation": "createCard",
+        "boardId": "={{ $json.board }}",
+        "listId": "={{ $json.list }}",
+        "name": "={{ $json.name }}",
+        "desc": "File: {{ $json.link }}"
+      },
+      "name": "Create Trello Card",
+      "type": "n8n-nodes-base.trello",
+      "typeVersion": 1,
+      "position": [850, 300][850, 300]
+    }
+  ],
+  "connections": {
+    "Cron": { "main": [["List Files", "main"]] },
+    "List Files": { "main": [["Map to Trello", "main"]] },
+    "Map to Trello": { "main": [["Create Trello Card", "main"]] }
+  }
+}
